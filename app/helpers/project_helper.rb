@@ -3,21 +3,11 @@
 module ProjectHelper
   # Existing code...
 
-  # Calculate project popularity score based on the number of stars, forks, and watchers
+  # Calculate project popularity score based on number of reviews and watchers
   def calculate_popularity_score(project)
-    stars = project.stars_count
-    forks = project.forks_count
-    watchers = project.watchers_count
-
-    # Assign weights to each factor
-    stars_weight = 0.5
-    forks_weight = 0.3
-    watchers_weight = 0.2
-
-    # Calculate the popularity score
-    popularity_score = (stars * stars_weight) + (forks * forks_weight) + (watchers * watchers_weight)
-
-    # Return the popularity score
-    popularity_score
+    reviews = project.reviews.count
+    watchers = project.watchers.count
+    score = (reviews * 0.6) + (watchers * 0.4)
+    score.round(2)
   end
 end
