@@ -1,4 +1,6 @@
 module ProjectHelper
+  # ... existing code ...
+
   def self.calculate_popularity_score(project)
     # Calculate popularity score based on project's watch count, star count, and fork count
     watch_count = project.watchers.count
