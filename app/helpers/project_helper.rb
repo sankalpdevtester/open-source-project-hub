@@ -1,24 +1,26 @@
-# app/helpers/project_helper.rb
+# frozen_string_literal: true
 
 module ProjectHelper
-  # Existing code...
+  # ... existing code ...
 
-  # Calculate project popularity score based on number of stars, forks, and reviews
-  def calculate_popularity_score(project)
-    stars = project.stars_count
-    forks = project.forks_count
-    reviews = project.reviews_count
+  def self.calculate_popularity_score(project)
+    # Calculate popularity score based on project's watch count, star count, and fork count
+    watch_count = project.watchers.count
+    star_count = project.stars.count
+    fork_count = project.forks.count
 
     # Assign weights to each factor
-    star_weight = 0.5
+    watch_weight = 0.3
+    star_weight = 0.4
     fork_weight = 0.3
-    review_weight = 0.2
 
     # Calculate popularity score
-    popularity_score = (star_weight * stars) + (fork_weight * forks) + (review_weight * reviews)
+    popularity_score = (watch_count * watch_weight) + (star_count * star_weight) + (fork_count * fork_weight)
 
-    # Normalize score to a range of 0-100
-    normalized_score = (popularity_score / (star_weight + fork_weight + review_weight)) * 100
+    # Normalize popularity score to a value between 0 and 100
+    max_score = 100
+    min_score = 0
+    normalized_score = ((popularity_score - min_score) / (max_score - min_score)) * 100
 
     normalized_score
   end
