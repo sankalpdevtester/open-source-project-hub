@@ -40,70 +40,46 @@ class ProjectRankerHelper
 end
 ```
 
-# Usage example in a controller
+# Example usage in a controller
 ```ruby
 # app/controllers/projects_controller.rb
 class ProjectsController < ApplicationController
   def index
     @top_projects = ProjectRankerHelper.get_top_projects
+    render json: @top_projects
   end
 end
 ```
 
-# Usage example in a view
-```erb
-<!-- app/views/projects/index.html.erb -->
-<h1>Top Projects</h1>
-<ul>
-  <% @top_projects.each do |project| %>
-    <li><%= link_to project.name, project_path(project) %></li>
-  <% end %>
-</ul>
-```
+# Example usage in a React component
+```jsx
+// components/ProjectList.js
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-# Integration with existing files
-The `ProjectRanker` service uses the `Project` model to retrieve project data and calculate the project score. The `ProjectRankerHelper` class provides a convenient method to get the top projects, which can be used in controllers and views. The `project_helper.rb` file can be updated to include a method that uses the `ProjectRankerHelper` class.
+function ProjectList() {
+  const [projects, setProjects] = useState([]);
 
-```ruby
-# app/helpers/project_helper.rb
-module ProjectHelper
-  def get_top_projects
-    ProjectRankerHelper.get_top_projects
-  end
-end
-```
+  useEffect(() => {
+    axios.get('/projects')
+      .then(response => {
+        setProjects(response.data);
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  }, []);
 
-# Database schema update
-No changes are required to the database schema, as the `ProjectRanker` service uses existing associations and columns.
+  return (
+    <div>
+      <h1>Top Projects</h1>
+      <ul>
+        {projects.map(project => (
+          <li key={project.id}>{project.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
-# Test cases
-Test cases can be added to ensure the `ProjectRanker` service is working correctly.
-
-```ruby
-# spec/services/project_ranker_spec.rb
-require 'rails_helper'
-
-RSpec.describe ProjectRanker do
-  let(:project) { create(:project) }
-  let(:review) { create(:review, project: project) }
-  let(:discussion) { create(:discussion, project: project) }
-  let(:star) { create(:star, project: project) }
-
-  it 'calculates the project score correctly' do
-    expect(ProjectRanker.new.calculate_project_score(project)).to eq(0)
-    review
-    expect(ProjectRanker.new.calculate_project_score(project)).to eq(5)
-    discussion
-    expect(ProjectRanker.new.calculate_project_score(project)).to eq(8)
-    star
-    expect(ProjectRanker.new.calculate_project_score(project)).to eq(10)
-  end
-
-  it 'ranks projects correctly' do
-    project1 = create(:project)
-    project2 = create(:project)
-    create(:review, project: project1)
-    create(:discussion, project: project2)
-    expect(ProjectRanker.new.rank_projects).to eq([project1, project2])
-  end
-end
+export default ProjectList;
