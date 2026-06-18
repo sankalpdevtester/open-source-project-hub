@@ -1,28 +1,15 @@
-<h1>Projects</h1>
+<h1>Project Showcase</h1>
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Description</th>
-      <th>URL</th>
-      <th>User</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% @projects.each do |project| %>
-      <tr>
-        <td><%= project.name %></td>
-        <td><%= project.description %></td>
-        <td><%= project.url %></td>
-        <td><%= project.user.name %></td>
-        <td>
-          <%= link_to 'Show', project %>
-          <%= link_to 'Edit', edit_project_path(project) %>
-          <%= link_to 'Destroy', project, method: :delete, data: { confirm: 'Are you sure?' } %>
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+<div class="row">
+  <% @projects.each do |project| %>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title"><%= project.name %></h5>
+          <p class="card-text"><%= project.description %></p>
+          <a href="<%= project.url %>" class="btn btn-primary">Visit Project</a>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
