@@ -1,6 +1,6 @@
 class ProjectsController < ApplicationController
-  before_action :authenticate_user!, only: [:create, :update, :destroy]
-  before_action :set_project, only: [:show, :update, :destroy]
+  before_action :authenticate_user!
+  before_action :set_project, only: [:show, :edit, :update, :destroy]
 
   def index
     @projects = Project.all
@@ -9,6 +9,10 @@ class ProjectsController < ApplicationController
 
   def show
     render json: @project
+  end
+
+  def new
+    @project = Project.new
   end
 
   def create
@@ -21,6 +25,9 @@ class ProjectsController < ApplicationController
     end
   end
 
+  def edit
+  end
+
   def update
     if @project.update(project_params)
       render json: @project
@@ -31,7 +38,7 @@ class ProjectsController < ApplicationController
 
   def destroy
     @project.destroy
-    head :no_content
+    render json: { message: 'Project deleted successfully' }
   end
 
   private
