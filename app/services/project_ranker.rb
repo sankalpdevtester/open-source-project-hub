@@ -5,30 +5,39 @@ class ProjectRanker
     @project = project
   end
 
-  def calculate_score
-    # Calculate the project score based on the number of stars, forks, and reviews
-    score = (@project.stars * 2) + (@project.forks * 1.5) + (@project.reviews.count * 1)
-    score
+  def calculate_rank
+    # Calculate rank based on project's reviews, discussions, and submissions
+    reviews = @project.reviews.count
+    discussions = @project.discussions.count
+    submissions = @project.submissions.count
+
+    # Assign weights to each factor
+    review_weight = 0.4
+    discussion_weight = 0.3
+    submission_weight = 0.3
+
+    # Calculate rank
+    rank = (reviews * review_weight) + (discussions * discussion_weight) + (submissions * submission_weight)
+
+    # Normalize rank to a scale of 1-100
+    normalized_rank = (rank / (reviews + discussions + submissions).to_f) * 100
+
+    # Return the normalized rank
+    normalized_rank
   end
 
-  def rank_project
-    # Rank the project based on its score
-    Project.order(score: :desc).find_index(@project) + 1
-  end
-
-  def update_project_score
-    # Update the project score and rank
-    @project.score = calculate_score
-    @project.rank = rank_project
-    @project.save
-  end
-
-  def self.update_all_project_scores
-    # Update the scores and ranks of all projects
-    Project.all.each do |project|
+  def self.rank_projects(projects)
+    # Rank projects based on their calculated ranks
+    ranked_projects = projects.map do |project|
       ranker = ProjectRanker.new(project)
-      ranker.update_project_score
+      [project, ranker.calculate_rank]
     end
+
+    # Sort projects by rank in descending order
+    ranked_projects.sort_by! { |_, rank| -rank }
+
+    # Return the sorted projects
+    ranked_projects.map { |project, _| project }
   end
 end
 ```
@@ -38,42 +47,32 @@ end
 class ProjectsController < ApplicationController
   # ...
 
-  def create
-    # ...
-    @project = Project.new(project_params)
-    if @project.save
-      # Update the project score and rank
-      ProjectRanker.new(@project).update_project_score
-      # ...
-    end
+  def index
+    @projects = Project.all
+    @ranked_projects = ProjectRanker.rank_projects(@projects)
   end
 
-  def update
-    # ...
-    if @project.update(project_params)
-      # Update the project score and rank
-      ProjectRanker.new(@project).update_project_score
-      # ...
-    end
-  end
+  # ...
 end
 ```
 
 ```ruby
-# db/models/project.rb (updated)
-class Project < ApplicationRecord
-  # ...
+# app/views/projects/index.html.erb (updated)
+<h1>Projects</h1>
 
-  def score
-    # Calculate the project score based on the number of stars, forks, and reviews
-    (self.stars * 2) + (self.forks * 1.5) + (self.reviews.count * 1)
-  end
+<h2>Ranked Projects</h2>
+<ul>
+  <% @ranked_projects.each do |project| %>
+    <li><%= link_to project.name, project_path(project) %></li>
+  <% end %>
+</ul>
 
-  def rank
-    # Rank the project based on its score
-    Project.order(score: :desc).find_index(self) + 1
-  end
-end
+<h2>All Projects</h2>
+<ul>
+  <% @projects.each do |project| %>
+    <li><%= link_to project.name, project_path(project) %></li>
+  <% end %>
+</ul>
 ```
 
 ```ruby
@@ -82,33 +81,27 @@ require 'rails_helper'
 
 RSpec.describe ProjectRanker do
   let(:project) { create(:project) }
+  let(:review) { create(:review, project: project) }
+  let(:discussion) { create(:discussion, project: project) }
+  let(:submission) { create(:submission, project: project) }
 
-  describe '#calculate_score' do
-    it 'calculates the project score based on the number of stars, forks, and reviews' do
-      project.stars = 10
-      project.forks = 5
-      project.reviews = create_list(:review, 3)
-      expect(ProjectRanker.new(project).calculate_score).to eq(10 * 2 + 5 * 1.5 + 3 * 1)
+  describe '#calculate_rank' do
+    it 'calculates the rank based on reviews, discussions, and submissions' do
+      expect(ProjectRanker.new(project).calculate_rank).to be > 0
+    end
+
+    it 'assigns weights to each factor' do
+      expect(ProjectRanker.new(project).instance_variable_get(:@review_weight)).to eq 0.4
+      expect(ProjectRanker.new(project).instance_variable_get(:@discussion_weight)).to eq 0.3
+      expect(ProjectRanker.new(project).instance_variable_get(:@submission_weight)).to eq 0.3
     end
   end
 
-  describe '#rank_project' do
-    it 'ranks the project based on its score' do
-      project.stars = 10
-      project.forks = 5
-      project.reviews = create_list(:review, 3)
-      expect(ProjectRanker.new(project).rank_project).to eq(1)
-    end
-  end
-
-  describe '#update_project_score' do
-    it 'updates the project score and rank' do
-      project.stars = 10
-      project.forks = 5
-      project.reviews = create_list(:review, 3)
-      ProjectRanker.new(project).update_project_score
-      expect(project.score).to eq(10 * 2 + 5 * 1.5 + 3 * 1)
-      expect(project.rank).to eq(1)
+  describe '#rank_projects' do
+    it 'ranks projects based on their calculated ranks' do
+      projects = [project, create(:project)]
+      ranked_projects = ProjectRanker.rank_projects(projects)
+      expect(ranked_projects.first).to eq project
     end
   end
 end
