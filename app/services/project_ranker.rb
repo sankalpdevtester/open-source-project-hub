@@ -20,66 +20,122 @@ class ProjectRanker
     rank = (reviews * review_weight) + (discussions * discussion_weight) + (submissions * submission_weight)
 
     # Normalize rank to a scale of 1-100
-    normalized_rank = (rank / (reviews + discussions + submissions).to_f) * 100 if (reviews + discussions + submissions) > 0
+    normalized_rank = (rank / (reviews + discussions + submissions).to_f) * 100
 
     # Return the normalized rank
-    normalized_rank || 0
+    normalized_rank
   end
 
   def self.rank_projects(projects)
     # Rank projects based on their calculated ranks
-    projects.sort_by { |project| ProjectRanker.new(project).calculate_rank }.reverse
+    ranked_projects = projects.map do |project|
+      ranker = ProjectRanker.new(project)
+      { project: project, rank: ranker.calculate_rank }
+    end
+
+    # Sort projects by rank in descending order
+    ranked_projects.sort_by! { |project| -project[:rank] }
+
+    # Return the ranked projects
+    ranked_projects
   end
 end
-
-# Example usage:
-# projects = Project.all
-# ranked_projects = ProjectRanker.rank_projects(projects)
-# ranked_projects.each do |project|
-#   puts "Project: #{project.name}, Rank: #{ProjectRanker.new(project).calculate_rank}"
-# end
 ```
 
-# Integration with existing files:
-# - `app/controllers/projects_controller.rb`: Use the `ProjectRanker` service to calculate project ranks and display them in the project index view.
-# - `app/views/projects/index.html.erb`: Display the project ranks in the project index view.
-# - `app/helpers/project_helper.rb`: Use the `ProjectRanker` service to calculate project ranks and display them in the project show view.
-# - `spec/requests/projects_request_spec.rb`: Test the project ranking API endpoint.
-# - `spec/factories/projects.rb`: Create test projects with varying numbers of reviews, discussions, and submissions to test the ranking algorithm.
-
-# Usage in `projects_controller.rb`:
 ```ruby
-# app/controllers/projects_controller.rb
-
+# app/controllers/projects_controller.rb (updated)
 class ProjectsController < ApplicationController
+  # ...
+
   def index
-    @projects = ProjectRanker.rank_projects(Project.all)
+    @projects = Project.all
+    @ranked_projects = ProjectRanker.rank_projects(@projects)
   end
+
+  # ...
 end
 ```
 
-# Usage in `project_helper.rb`:
 ```ruby
-# app/helpers/project_helper.rb
-
-module ProjectHelper
-  def project_rank(project)
-    ProjectRanker.new(project).calculate_rank
-  end
-end
-```
-
-# Usage in `index.html.erb`:
-```erb
-<!-- app/views/projects/index.html.erb -->
-
+# app/views/projects/index.html.erb (updated)
 <h1>Projects</h1>
 
+<h2>Ranked Projects</h2>
 <ul>
-  <% @projects.each do |project| %>
+  <% @ranked_projects.each do |project| %>
     <li>
-      <%= link_to project.name, project %>
-      (Rank: <%= project_rank(project) %>)
+      <%= link_to project[:project].name, project_path(project[:project]) %>
+      (Rank: <%= project[:rank].round(2) %>)
     </li>
   <% end %>
 </ul>
+```
+
+```javascript
+// app/assets/javascripts/components/ProjectForm.js (updated)
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+const ProjectForm = () => {
+  const [project, setProject] = useState({});
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    // Create a new project
+    const newProject = { ...project };
+
+    // Calculate the project's rank
+    const ranker = new ProjectRanker(newProject);
+    const rank = ranker.calculate_rank();
+
+    // Display the project's rank
+    console.log(`Project rank: ${rank}`);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* ... */}
+    </form>
+  );
+};
+
+export default ProjectForm;
+```
+
+```ruby
+# spec/services/project_ranker_spec.rb (new)
+require 'rails_helper'
+
+RSpec.describe ProjectRanker do
+  let(:project) { create(:project) }
+
+  describe '#calculate_rank' do
+    it 'calculates the project rank based on reviews, discussions, and submissions' do
+      # Create reviews, discussions, and submissions for the project
+      create_list(:review, 5, project: project)
+      create_list(:discussion, 3, project: project)
+      create_list(:submission, 2, project: project)
+
+      # Calculate the project rank
+      ranker = ProjectRanker.new(project)
+      rank = ranker.calculate_rank
+
+      # Expect the rank to be within the expected range
+      expect(rank).to be_within(1).of(50)
+    end
+  end
+
+  describe '.rank_projects' do
+    it 'ranks projects based on their calculated ranks' do
+      # Create multiple projects with different numbers of reviews, discussions, and submissions
+      projects = create_list(:project, 5)
+
+      # Calculate the ranks for each project
+      ranked_projects = ProjectRanker.rank_projects(projects)
+
+      # Expect the projects to be ranked in descending order of their ranks
+      expect(ranked_projects.map { |project| project[:rank] }).to eq(ranked_projects.map { |project| project[:rank] }.sort.reverse)
+    end
+  end
+end
